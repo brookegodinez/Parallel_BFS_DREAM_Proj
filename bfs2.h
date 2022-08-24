@@ -1,63 +1,120 @@
 #include <iostream>
+#include <cstdio>
+#include <stdlib.h>
+#include <cmath>
+#include <vector>
+#include <algorithm>
+#include <cilk/cilk.h>
+#include <cilk/cilk_api.h>
+#include "get_time.h"
 
 using namespace std;
 
 
  int scan_up(int* A, int* LS, int n)
  {
-     int k = n;
-     int Curr[n], CLS[n];
-     for (int i = 0; i < n; i++) Curr[i] = A[i];
-     for (int i = 0; i < n; i++) CLS[i] = LS[i];
+     //int k = n;
+     //int Curr[n], CLS[n];
+     //for (int i = 0; i < n; i++) Curr[i] = A[i];
+     //for (int i = 0; i < n; i++) CLS[i] = LS[i];
+     if (n < 100)
+     {
+     	int k = 0;
+	for (int i = 0; i < n; i++)
+	{
+		if (i % 2 ==0) LS[i] = A[i];
+	        else {
+			LS[i] = 0;
+			for (int j = 0; j < i; j++) LS[i] += A[j];
+		}	
+	}
+     }
+
      if (n == 1) return A[0];
      int m = n/2;
      int l, r;
-     l = scan_up(A, LS, m);
+     l = cilk_spawn scan_up(A, LS, m);
+     //l = scan_up(A, LS, m);
      r = scan_up(A+m, LS+m, n-m);
+     cilk_sync;
      LS[m-1] = l;
      return l+r;
  }
  void scan_down(int* A, int* B, int* LS, int n, int offset)
  {
-     if (n == 1) {B[0] = A[0] + offset; return; }
+     //if (n == 1) {B[0] = A[0] + offset; return; }
+     if(n <= 200) 
+     {
+     	B[0] = offset + A[0];
+	for (int i = 1; i < n; i++) B[i] = B[i-1] + A[i];
+	return;
+     }
      int m = n/2;
-     
-     scan_down(A, B, LS, m, offset);
+     //cout << "scan down m: " << m << endl;
+     cilk_spawn scan_down(A, B, LS, m, offset);
+     //scan_down(A, B, LS, m, offset);
      scan_down(A+m, B+m, LS+m, n-m, offset+LS[m-1]);
+     cilk_sync;
      return;
  }
  int* inclusive_scan(int* A, int n){
     int* LS = new int[n];
     int* B = new int[n];
+    //cilk_spawn scan_up(A, LS, n);
     scan_up(A, LS, n);
     scan_down(A, B, LS, n, 0);
+    //cilk_sync;
+    delete [] LS;
     return B;
 }
 
 int* exclusive_scan(int* A, int n)
 {
+    //cout << "exclusive_scan n: "<< n << " ";
     int* LS = new int[n];
-    int* B = new int[n];
+    int* B = new int[n+1];
     B[0] = 0;
+    //cilk_spawn scan_up(A, LS, n);
     scan_up(A, LS, n);
     scan_down(A, B+1, LS, n, 0);
+    //cilk_sync;
+    delete [] LS;
     return B;
 }
 
  int* pack_flatten(int* arrLen, int** A, int n, int m)
  {
-     int S[n];
+     //int S[n];
      int* B = new int[m]; ///
-     for (int i = 0; i < n; i++) S[i] = arrLen[i];
-     int* offset = exclusive_scan(S, n);
-     for (int i = 0; i < n; i++)
+     //for (int i = 0; i < n; i++) S[i] = arrLen[i];
+     int* offset = exclusive_scan(arrLen, n);//new int[n]; 
+     //int* tmp = exclusive_scan(arrLen, n);
+     //if(tmp) offset = tmp;
+     if (n < 200)
+     {
+	for (int i = 0; i < n; i++)
+	{
+		int off = offset[i];
+		for(int j = 0; j < arrLen[i]; j++)
+		{
+			B[off+j] = A[i][j];
+		}
+	}
+
+
+
+     }
+     else{
+     cilk_for (int i = 0; i < n; i++)
      {
          int off = offset[i];
-         for (int j = 0; j < S[i]; j++)
+         for (int j = 0; j < arrLen[i]; j++)
          {
              B[off+j] = A[i][j];
          }
     }
+}
+    delete [] offset;
     return B;
  }
  
@@ -66,23 +123,38 @@ int* filter(int* ngh, int* flag, int n)
     
     int* prefix_sum_of_flags = inclusive_scan(flag, n);
     // int C[n];
-    // for (int i = 0; i < n; i++) C[i] = prefix_sum_of_flags[i];
-    int* B = new int[prefix_sum_of_flags[n]];
-    for (int i = 0; i<n; i++)
+    //cout << "flag array: ";
+    //for (int i = 0; i < n; i++) cout << flag[i] << " ";
+    //cout << "n: "<< n << " " << "num in the next array: " << prefix_sum_of_flags[n-1] << " ";
+    int* B = new int[prefix_sum_of_flags[n-1]];
+    if (n < 200)
+	{
+	for(int i = 0; i < n; i++){
+		if(flag[i] == 1)
+		{
+			B[prefix_sum_of_flags[i]-1] = ngh[i];
+		}
+	}
+
+	}
+    else{
+    cilk_for (int i = 0; i<n; i++)
     {
-        if(flag[i])
+        if(flag[i] == 1)
         {
             // int k = ngh[i];
             // int h = prefix_sum_of_flags[i];
             B[prefix_sum_of_flags[i]-1] = ngh[i];
         }
     }
+}
+    delete [] prefix_sum_of_flags;
     return B;
 }
 
-void bfs(int n, int m, int* offset, int* E, int s, int* dist)
+void BFS(int n, int m, int* offset, int* E, int s, int* dist)
 {
-    // for (int i = 0; i < n; i++) dist[i] = -1;
+    for (int i = 0; i < n; i++) dist[i] = -1;
     int frontierSize = 1;
     int* frontier = new int[frontierSize];
     int curr_dist = 1;
@@ -91,6 +163,7 @@ void bfs(int n, int m, int* offset, int* E, int s, int* dist)
     
     while(frontierSize != 0) //continue until there are no more vertexs to add to the frontier
     {
+	cout << "frontier size: " << frontierSize << endl;
         int** effective_nghs = new int*[frontierSize];
         int* ngh_len = new int[frontierSize];
         
@@ -106,16 +179,18 @@ void bfs(int n, int m, int* offset, int* E, int s, int* dist)
             // int* temp_arr = new int[k];
             int* flag = new int[k]; //flag array for which of these neightbors will be added to the effective neightbors list, need to change to delayed seq.
             
-            for(int j = 0; j < k; j++) //for every neighbor of the current vertex 
-            {
-                int what = E[offset[curr_v]+j];
+            cilk_for(int j = 0; j < k; j++) //for every neighbor of the current vertex 
+            //for(int j = 0; j < k; j++)
+	    {
+                //int what = E[offset[curr_v]+j];
                 // temp_arr[i] = E[offset[curr_v]+j];
-                if (dist[E[offset[curr_v]+j]] == -1) //the offset of our curr_v could be 3 and then we increment for everyneighbor and check if that vertex has
+                if (dist[E[offset[curr_v]+j]] == -1 && __sync_bool_compare_and_swap(&dist[E[offset[curr_v]+j]], -1, curr_dist)) //the offset of our curr_v could be 3 and then we increment for everyneighbor and check if that vertex has
                 //already been visited i.e. is the dist != -1 
                 {
                     // int what = dist[E[offset[curr_v]+j]];
                     dist[E[offset[curr_v]+j]] = curr_dist;
                     flag[j] = 1;
+		    //cout << "node: "<<E[offset[curr_v]+j] << " dist:" << dist[E[offset[curr_v]+j]] << " ";
                     //add to frontier
                     
                 }
@@ -124,13 +199,20 @@ void bfs(int n, int m, int* offset, int* E, int s, int* dist)
                     flag[j] = 0;
                 }
             }
-            ngh_len[i] = inclusive_scan(flag, k)[k-1];
-            effective_nghs[i] = filter(E+offset[curr_v], flag, k);//getting the effective neighbors for the curr_node
+	    //cout << "I still exist here";
+            int* tmp  = inclusive_scan(flag, k); 
+	    ngh_len[i] = tmp[k-1];
+	    delete [] tmp;
+	    effective_nghs[i] = filter(E+offset[curr_v], flag, k);//getting the effective neighbors for the curr_node
             delete [] flag;
+	    //cout << "I still exist here part 2";
         }
-        int newFrontierSize = inclusive_scan(ngh_len, frontierSize)[frontierSize-1];
+	int* tmp = inclusive_scan(ngh_len, frontierSize);
+        int newFrontierSize = tmp[frontierSize-1];
+	delete [] tmp;
         // for (int i = 0; i < frontierSize; i++) delete [] effective_nghs[i];
         // delete [] effective_nghs;
+	delete [] frontier;
         frontier = pack_flatten(ngh_len, effective_nghs, frontierSize, newFrontierSize);
         for (int i = 0; i < frontierSize; i++) delete [] effective_nghs[i];
         delete [] effective_nghs;
@@ -140,6 +222,7 @@ void bfs(int n, int m, int* offset, int* E, int s, int* dist)
         
         curr_dist++;
     }
+	delete [] frontier;
 }
 
 
