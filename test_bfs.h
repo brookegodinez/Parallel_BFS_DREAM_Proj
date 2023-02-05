@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <cilk/cilk.h>
 #include <cilk/cilk_api.h>
-#include "get_time.h"
+//#include "get_time.h"
 
 using namespace std;
 
@@ -17,10 +17,10 @@ using namespace std;
      if (n == 1) return A[0];
      int m = n/2;
      int l, r;
-     l = cilk_spawn scan_up(A, LS, m);
-    //  l = scan_up(A, LS, m);
-    //  r = scan_up(A+m, LS+m, n-m);
-     cilk_sync;
+    l = cilk_spawn scan_up(A, LS, m);
+    //l = scan_up(A, LS, m);
+    r = scan_up(A+m, LS+m, n-m);
+    cilk_sync;
      LS[m-1] = l;
      return l+r;
  }
@@ -35,10 +35,10 @@ using namespace std;
      }
      int m = n/2;
     
-     cilk_spawn scan_down(A, B, LS, m, offset);
-    //  scan_down(A, B, LS, m, offset);
-    //  scan_down(A+m, B+m, LS+m, n-m, offset+LS[m-1]);
-     cilk_sync;
+    cilk_spawn scan_down(A, B, LS, m, offset);
+    //scan_down(A, B, LS, m, offset);
+    scan_down(A+m, B+m, LS+m, n-m, offset+LS[m-1]);
+    cilk_sync;
      return;
  }
  int* inclusive_scan(int* A, int n){
@@ -111,7 +111,7 @@ int* exclusive_scan(int* A, int n)
      }
      else
      {
-        //  for (int i = 0; i < n; i++)
+         //for (int i = 0; i < n; i++)
          cilk_for (int i = 0; i < n; i++)
          {
              int off = offset[i];
@@ -127,34 +127,42 @@ int* exclusive_scan(int* A, int n)
  
 int* filter(int* ngh, int* flag, int n)
 {
+    if (n > 0){
+    	int* prefix_sum_of_flags = inclusive_scan(flag, n);
     
-    int* prefix_sum_of_flags = inclusive_scan(flag, n);
-    
-    int* B = new int[prefix_sum_of_flags[n-1]];
-    if (n < 200)
-	{
-    	for(int i = 0; i < n; i++)
-    	{
-    		if(flag[i] == 1)
+    	int* B = new int[prefix_sum_of_flags[n-1]];
+    	if (n < 200)
+		{
+    		for(int i = 0; i < n; i++)
     		{
-    			B[prefix_sum_of_flags[i]-1] = ngh[i];
+    			if(flag[i] == 1)
+    			{
+    				B[prefix_sum_of_flags[i]-1] = ngh[i];
+    			}
     		}
-    	}
 
+		}
+    	else
+    	{
+        //for (int i = 0; i<n; i++)
+        	cilk_for (int i = 0; i<n; i++)
+        	{
+            		if(flag[i] == 1)
+            		{
+                		B[prefix_sum_of_flags[i]-1] = ngh[i];
+            		}
+        	}
+    	}
+    	delete [] prefix_sum_of_flags;
+    	return B;
 	}
-    else
-    {
-        // for (int i = 0; i<n; i++)
-        cilk_for (int i = 0; i<n; i++)
-        {
-            if(flag[i] == 1)
-            {
-                B[prefix_sum_of_flags[i]-1] = ngh[i];
-            }
-        }
-    }
-    delete [] prefix_sum_of_flags;
-    return B;
+   else 
+   {
+	int* tmp = new int[0];
+	return tmp;
+
+   }
+
 }
 
 int* filter_for_dense(int* flag, int n)
@@ -175,7 +183,7 @@ int* filter_for_dense(int* flag, int n)
         }
     else
     {
-        // for (int i = 0; i<n; i++)
+        //for (int i = 0; i<n; i++)
         cilk_for (int i = 0; i<n; i++)
         {
             if(flag[i] == 1)
@@ -200,7 +208,7 @@ void BFS(int n, int m, int* offset, int* E, int s, int* dist, int* weights)
     frontier[0] = s; 
     int* dense_frontier = new int[n];
     int t = n / 2;
-
+    cout << "in BFS";
     while(frontierSize != 0) //continue until there are no more vertexs to add to the frontier
     {
 	
@@ -222,14 +230,14 @@ void BFS(int n, int m, int* offset, int* E, int s, int* dist, int* weights)
                     
                     int* flag = new int[k]; //flag array for which of these neightbors will be added to the effective neightbors list, need to change to delayed seq.
                     cilk_for(int j = 0; j < k; j++) //for every neighbor of the current vertex 
-                    // for(int j = 0; j < k; j++)
+                    //for(int j = 0; j < k; j++)
         	        {
                         
                         if (dist[E[offset[curr_v]+j]] == -1 && __sync_bool_compare_and_swap(&dist[E[offset[curr_v]+j]], -1, curr_dist)) //the offset of our curr_v could be 3 and then we increment for everyneighbor and check if that vertex has
                         //already been visited i.e. is the dist != -1 
                         {
                             
-                            dist[E[offset[curr_v]+j]] = curr_dist + weights[offset[curr_v]+j];
+                            dist[E[offset[curr_v]+j]] = dist[curr_v] + weights[offset[curr_v]+j];
                             flag[j] = 1;
                         }
                         else 
@@ -258,8 +266,8 @@ void BFS(int n, int m, int* offset, int* E, int s, int* dist, int* weights)
             curr_dist++;
         	}
     	cilk_for(int i = 0; i < n; i++) dense_frontier[i] = 0;
-    	// for(int i = 0; i < n; i++) dense_frontier[i] = 0;
-    	// for(int i = 0; i < frontierSize; i++) dense_frontier[frontier[i]] = 1;
+    	//for(int i = 0; i < n; i++) dense_frontier[i] = 0;
+    	//for(int i = 0; i < frontierSize; i++) dense_frontier[frontier[i]] = 1;
     	cilk_for(int i = 0; i < frontierSize; i++) dense_frontier[frontier[i]] = 1;
         }
     
@@ -271,8 +279,8 @@ void BFS(int n, int m, int* offset, int* E, int s, int* dist, int* weights)
         	
         		int* new_dense_frontier = new int[n];
         		cilk_for(int i = 0; i < n; i++) new_dense_frontier[i] = 0;
-        		// for(int i = 0; i < n; i++) new_dense_frontier[i] = 0;
-        		// for (int i = 0; i < n; i++)
+        		//for(int i = 0; i < n; i++) new_dense_frontier[i] = 0;
+        		//for (int i = 0; i < n; i++)
         		cilk_for(int i = 0; i < n; i++)
         		{
         			if(dist[i] == -1)
@@ -283,27 +291,30 @@ void BFS(int n, int m, int* offset, int* E, int s, int* dist, int* weights)
         					
         					if(dense_frontier[E[offset[i]+j]] == 1 && __sync_bool_compare_and_swap(&dist[i], -1, curr_dist))
         					{
-        						dist[i] = dist[i] = curr_dist + weights[offset[i]+j];
+        						dist[i] = dist[E[offset[i]+j]] + weights[offset[i]+j];
         						new_dense_frontier[i] = 1;
         						
         						break;
         					}
         				}
         			}
-        		} 
+        		}
+			                         
         		curr_dist++;
-        		
+
         		delete [] dense_frontier;
-        		dense_frontier = new_dense_frontier;
+        		dense_frontier = new_dense_frontier;        		
         		
-        		int* tmp = inclusive_scan(dense_frontier, n);
+			int* tmp = inclusive_scan(dense_frontier, n);
         		frontierSize = tmp[n-1];
+
+			delete [] tmp;
         	}
     	
     	delete [] frontier;
     	frontier = filter_for_dense(dense_frontier, n);
         }
     }
-
+	delete [] dense_frontier;
 	delete [] frontier;
 }
