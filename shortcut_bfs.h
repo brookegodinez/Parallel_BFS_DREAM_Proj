@@ -13,168 +13,6 @@
 using namespace std;
 
 
-//  int scan_up(int* A, int* LS, int n)
-//  {
-
-//      if (n == 1) return A[0];
-//      int m = n/2;
-//      int l, r;
-//     //  l = cilk_spawn scan_up(A, LS, m);
-//      l = scan_up(A, LS, m);
-//      r = scan_up(A+m, LS+m, n-m);
-//     //  cilk_sync;
-//      LS[m-1] = l;
-//      return l+r;
-//  }
-//  void scan_down(int* A, int* B, int* LS, int n, int offset)
-//  {
-//      if(n <= 200) 
-//      {
-//      	B[0] = offset + A[0];
-// 	for (int i = 1; i < n; i++) B[i] = B[i-1] + A[i];
-// 	return;
-//      }
-//      int m = n/2;
-//     //  cilk_spawn scan_down(A, B, LS, m, offset);
-//      scan_down(A, B, LS, m, offset);
-//      scan_down(A+m, B+m, LS+m, n-m, offset+LS[m-1]);
-//     //  cilk_sync;
-//      return;
-//  }
-//  int* inclusive_scan(int* A, int n){
-//     int* LS = new int[n];
-//     int* B = new int[n];
-//     if (n < 200)
-//     {
-//     	B[0] = A[0];
-// 	for (int i = 1; i < n; i++)
-// 	{
-// 		B[i] = B[i-1] + A[i];
-// 	}
-//     }
-//     else
-//     {
-//     	scan_up(A, LS, n);
-//     	scan_down(A, B, LS, n, 0);
-//     }
-//     delete [] LS;
-//     return B;
-// }
-
-// int* exclusive_scan(int* A, int n)
-// {
-//     int* LS = new int[n];
-//     int* B = new int[n+1];
-//     B[0] = 0;
-//     if (n < 100)
-//     {
-// 	for(int i = 1; i < n; i++)
-// 	{
-// 		B[i] = B[i-1] + A[i-1];
-// 	}
-
-//     }
-//     else 
-//     {
-//     scan_up(A, LS, n);
-//     scan_down(A, B+1, LS, n, 0);
-//     }
-//     delete [] LS;
-//     return B;
-// }
-
-//  int* pack_flatten(int* arrLen, int** A, int n, int m)
-//  {
-//      int* B = new int[m]; ///
-//      int* offset = exclusive_scan(arrLen, n);
-     
-//      if (n < 200)
-//      {
-// 	for (int i = 0; i < n; i++)
-// 	{
-// 		int off = offset[i];
-// 		for(int j = 0; j < arrLen[i]; j++)
-// 		{
-// 			B[off+j] = A[i][j];
-// 		}
-// 	}
-
-
-
-//      }
-//      else{
-//      for (int i = 0; i < n; i++)
-//      //cilk_for (int i = 0; i < n; i++)
-//      {
-//          int off = offset[i];
-//          for (int j = 0; j < arrLen[i]; j++)
-//          {
-//              B[off+j] = A[i][j];
-//          }
-//     }
-// }
-//     delete [] offset;
-//     return B;
-//  }
- 
-// int* filter(int* ngh, int* flag, int n)
-// {
-    
-//     int* prefix_sum_of_flags = inclusive_scan(flag, n);
-//     int* B = new int[prefix_sum_of_flags[n-1]];
-//     if (n < 200)
-// 	{
-// 	for(int i = 0; i < n; i++){
-// 		if(flag[i] != 0)
-// 		{
-// 			B[prefix_sum_of_flags[i]-1] = ngh[i];
-// 		}
-// 	}
-
-// 	}
-//     else{
-//     for (int i = 0; i<n; i++)
-//     // cilk_for (int i = 0; i<n; i++)
-//     {
-//         if(flag[i] != 0)
-//         {
-//             B[prefix_sum_of_flags[i]-1] = ngh[i];
-//         }
-//     }
-// }
-//     delete [] prefix_sum_of_flags;
-//     return B;
-// }
-
-// int* filter_for_dense(int* flag, int n)
-// {
-//     int* prefix_sum_of_flags = inclusive_scan(flag, n);
-//     int* B = new int[prefix_sum_of_flags[n-1]];
-//     if (n < 200)
-//         {
-//         for(int i = 0; i < n; i++){
-//                 if(flag[i] == 1)
-//                 {
-//                         B[prefix_sum_of_flags[i]-1] = i;
-//                 }
-//         }
-
-//         }
-//     else{
-//     for (int i = 0; i<n; i++)
-//     // cilk_for (int i = 0; i<n; i++)
-//     {
-//         if(flag[i] == 1)
-//         {
-//             B[prefix_sum_of_flags[i]-1] = i;
-//         }
-//     }
-// }
-//     delete [] prefix_sum_of_flags;
-//     return B;
-// }
-
-
 
 int pre_processing_BFS(int n, int m, int* offset, int* E, int s, int* dist, int p, int**  new_neighbors, int** weights)
 {
@@ -283,12 +121,12 @@ void new_BFS(int n, int m, int* offset, int* E, int s, int* dist)
 
     
     int p = 2; 
-    cout << "In preprcoessing";
+    
     for(int i = 0; i < n; i++)
     { 
 	if (offset[i+1] > offset[i] ) 
 	{
-		//cout << "using pre_process";
+		
 		temp_new_offset[i] = pre_processing_BFS(n, m, offset, E, i, dist, p, new_neighbors, weights);
 	
 	}
@@ -299,15 +137,12 @@ void new_BFS(int n, int m, int* offset, int* E, int s, int* dist)
 		weights[i] = new int[0];
 	}
      }
-
-
     
     int* new_offset = exclusive_scan(temp_new_offset, n);
    
     int* new_E = pack_flatten(temp_new_offset, new_neighbors, n, new_offset[n]);
     int* new_weights = pack_flatten(temp_new_offset, weights, n, new_offset[n]);
-    //cout << test_v << "'s new edge list and weights";
-    //for (int i = new_offset[test_v]; i < new_offset[test_v+1]; i++) cout << new_E[i] << " " << new_weights[i] << endl;
+    
     
 
     
