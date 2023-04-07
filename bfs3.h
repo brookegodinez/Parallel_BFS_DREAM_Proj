@@ -222,7 +222,7 @@ void BFS(int n, int m, int* offset, int* E, int s, int* dist)
     dist[s] = 0;
     frontier[0] = s; 
     int* dense_frontier = new int[n];
-    int t = n / 10;
+    int t = sqrt(n);
 
     while(frontierSize != 0) //continue until there are no more vertexs to add to the frontier
     {
@@ -283,8 +283,7 @@ void BFS(int n, int m, int* offset, int* E, int s, int* dist)
 	//int* tmp = inclusive_scan(ngh_len, frontierSize);
         int newFrontierSize = reduce(ngh_len, frontierSize);//tmp[frontierSize-1];
 	//delete [] tmp;
-        // for (int i = 0; i < frontierSize; i++) delete [] effective_nghs[i];
-        // delete [] effective_nghs;
+        
 	delete [] frontier;
         frontier = pack_flatten(ngh_len, effective_nghs, frontierSize, newFrontierSize);
         for (int i = 0; i < frontierSize; i++) delete [] effective_nghs[i];
@@ -293,7 +292,7 @@ void BFS(int n, int m, int* offset, int* E, int s, int* dist)
         delete [] ngh_len;
         curr_dist++;
 	}
-	//cout << "I still exist here, before creating the dense frontier  ";
+	
 	cilk_for(int i = 0; i < n; i++) dense_frontier[i] = 0;
 	//for(int i = 0; i < n; i++) dense_frontier[i] = 0;
 	//for(int i = 0; i < frontierSize; i++) dense_frontier[frontier[i]] = 1;
@@ -301,11 +300,10 @@ void BFS(int n, int m, int* offset, int* E, int s, int* dist)
     }
 
 	else if(frontierSize > t){
-	//cout << "In frontierSize>n/10 ";
-	//int* new_dense_frontier = new int[n];
+	
 	while(frontierSize > t)
 	{
-		//cout << "frontier size: " << frontierSize << endl;
+		
 		int* new_dense_frontier = new int[n];
 		cilk_for(int i = 0; i < n; i++) new_dense_frontier[i] = 0;
 		//for(int i = 0; i < n; i++) new_dense_frontier[i] = 0;
@@ -333,26 +331,22 @@ void BFS(int n, int m, int* offset, int* E, int s, int* dist)
 			}
 		} 
 		curr_dist++;
-		//cout << "old frontier: ";
-		//for (int i = 0; i < n; i++) cout << dense_frontier[i] << " ";
+		
 		delete [] dense_frontier;
 		dense_frontier = new_dense_frontier;
-		//cout << "new frontier: ";
-		//for (int i = 0; i < n; i++) cout << dense_frontier[i] << " ";
-		//delete [] new_dense_frontier;
-		int* tmp = inclusive_scan(dense_frontier, n);
-		frontierSize = tmp[n-1];
-		delete [] tmp;
+		
+		
+		frontierSize = reduce(dense_frontier, n);
+		//delete [] tmp;
 	}
-	//int* tmp = inclusive_scan(dense_frontier, n);
+	
 	delete [] frontier;
 	frontier = filter_for_dense(dense_frontier, n);
-	//for(int i = 0; i < frontierSize; i++) cout << "a member of the frontier: " << frontier[i] << " ";
-	//cout << "end of frontier ";
+	
     }
            
     }
-	//cout << "I exist here";
+	
 	delete [] frontier;
 }
 

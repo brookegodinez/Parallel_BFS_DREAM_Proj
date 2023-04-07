@@ -33,8 +33,8 @@ int scan_up2(int* A, int* LS, int n)
 if (n == 1) return A[0];
      int m = n/2;
      int l, r;
-    l = cilk_spawn scan_up(A, LS, m);
-    r = scan_up(A+m, LS+m, n-m);
+    l = cilk_spawn scan_up2(A, LS, m);
+    r = scan_up2(A+m, LS+m, n-m);
     cilk_sync;
      LS[m-1] = l;
      return l+r;
@@ -50,8 +50,8 @@ if (n == 1) return A[0];
      }
      int m = n/2;
 
-    cilk_spawn scan_down(A, B, LS, m, offset, overall_offset);
-    scan_down(A+m, B+m, LS+m, n-m, offset+LS[m-1], overall_offset);
+    cilk_spawn scan_down2(A, B, LS, m, offset, overall_offset);
+    scan_down2(A+m, B+m, LS+m, n-m, offset+LS[m-1], overall_offset);
     cilk_sync;
      return;
  }
@@ -137,10 +137,10 @@ if (n == 1) return A[0];
     	scan_up(A, LS, n);
     	scan_down(A, B, LS, n, 0); */
 	int split = sqrt(n);
-	int num_splits = n/splits;
+	int num_splits = n/split;
 	if (n % split > 0) num_splits++;
 	int* offset_array = new int[num_splits];
-	for (int i = 0; i < num_splits; i++)
+	cilk_for (int i = 0; i < num_splits; i++)
 	{
 		if (i * split + split > n)
 		{
@@ -151,8 +151,23 @@ if (n == 1) return A[0];
 		{
 			offset_array[i] = reduce(A+(i * split), split);
 		}
-		int* excuslive_offset = exclusive_scan(offset_array, num_splits);
-	}	
+	}
+	int* excuslive_offset = exclusive_scan(offset_array, num_splits);
+	cilk_for (int i = 0; i < num_splits; i++)
+        {
+               if (i * split + split > n)
+                {
+                    scan_up2(A+(i * split), LS+(i * split), n-(i*split));
+                    scan_down2(A+(i * split), B+(i * split), LS+(i * split), n-(i*split), 0, excuslive_offset[i]);
+
+                }
+                else
+                {
+                    scan_up2(A+(i * split), LS+(i * split), split);
+                    scan_down2(A+(i * split), B+(i * split), LS+(i * split), split, 0, excuslive_offset[i]);
+                }
+        }
+	
     }
     
     delete [] LS;
@@ -166,7 +181,7 @@ int* exclusive_scan(int* A, int n)
     int* B = new int[n+1];
     B[0] = 0;
     
-    if (n < 100)
+    if (n < 200)
     {
     	for(int i = 1; i < n+1; i++)
     	{
@@ -175,9 +190,42 @@ int* exclusive_scan(int* A, int n)
 
     }
     else 
-    {
+    { 
         scan_up(A, LS, n);
-        scan_down(A, B+1, LS, n, 0);
+        scan_down(A, B+1, LS, n, 0); 
+	/*
+	int split = sqrt(n);
+        int num_splits = n/split;
+        if (n % split > 0) num_splits++;
+        int* offset_array = new int[num_splits];
+        cilk_for (int i = 0; i < num_splits; i++)
+        {
+                if (i * split + split > n)
+                {
+                        offset_array[i] = reduce(A+(i * split), n-(i*split));
+
+                }
+                else
+                {
+                        offset_array[i] = reduce(A+(i * split), split);
+                }
+        }
+        int* excuslive_offset = exclusive_scan(offset_array, num_splits);
+        cilk_for (int i = 0; i < num_splits; i++)
+        {
+               if (i * split + split > n)
+                {   
+                    scan_up2(A+(i * split), LS+(i * split), n-(i*split));
+                    scan_down2(A+(i * split), B+(i * split)+1, LS+(i * split), n-(i*split), 0, excuslive_offset[i]);
+
+                }
+                else
+                {   
+                    scan_up2(A+(i * split), LS+(i * split), split);
+                    scan_down2(A+(i * split), B+(i * split)+1, LS+(i * split), split, 0, excuslive_offset[i]);
+                }
+        }*/
+
     }
     
     delete [] LS;
