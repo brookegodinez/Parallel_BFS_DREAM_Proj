@@ -6,10 +6,10 @@
 #include <algorithm>
 #include <cilk/cilk.h>
 #include <cilk/cilk_api.h>
-#include "get_time.h"
-
+//#include "get_time.h"
+#include "bfs_utils.h"
 using namespace std;
-
+/*
 
  int scan_up(int* A, int* LS, int n)
  {
@@ -17,7 +17,7 @@ using namespace std;
      //int Curr[n], CLS[n];
      //for (int i = 0; i < n; i++) Curr[i] = A[i];
      //for (int i = 0; i < n; i++) CLS[i] = LS[i];
-   /*
+  
    if (n < 50)
      {
      	int k = 0;
@@ -29,7 +29,7 @@ using namespace std;
 			for (int j = 0; j < i; j++) LS[i] += A[j];
 		}	
 	}
-     } */
+     }
 
      //cout << n << "  ";
      //if (n == 0) return 1;
@@ -212,7 +212,7 @@ int* filter_for_dense(int* flag, int n)
     delete [] prefix_sum_of_flags;
     return B;
 }
-
+*/
 void BFS(int n, int m, int* offset, int* E, int s, int* dist)
 {
     for (int i = 0; i < n; i++) dist[i] = -1;
@@ -272,17 +272,17 @@ void BFS(int n, int m, int* offset, int* E, int s, int* dist)
                 }
             }
 	    //cout << "value of k: " << k << endl;
-            int* tmp  = inclusive_scan(flag, k); 
-	    ngh_len[i] = tmp[k-1];
-	    delete [] tmp;
+            //int* tmp  = inclusive_scan(flag, k); 
+	    ngh_len[i] = reduce(flag, k);
+	    //delete [] tmp;
 	    effective_nghs[i] = filter(E+offset[curr_v], flag, k);//getting the effective neighbors for the curr_node
             delete [] flag;
 	    //cout << "I still exist here part 2";
         }
 	//cout << "frontier size: " << frontierSize; 	
-	int* tmp = inclusive_scan(ngh_len, frontierSize);
-        int newFrontierSize = tmp[frontierSize-1];
-	delete [] tmp;
+	//int* tmp = inclusive_scan(ngh_len, frontierSize);
+        int newFrontierSize = reduce(ngh_len, frontierSize);//tmp[frontierSize-1];
+	//delete [] tmp;
         // for (int i = 0; i < frontierSize; i++) delete [] effective_nghs[i];
         // delete [] effective_nghs;
 	delete [] frontier;
@@ -342,6 +342,7 @@ void BFS(int n, int m, int* offset, int* E, int s, int* dist)
 		//delete [] new_dense_frontier;
 		int* tmp = inclusive_scan(dense_frontier, n);
 		frontierSize = tmp[n-1];
+		delete [] tmp;
 	}
 	//int* tmp = inclusive_scan(dense_frontier, n);
 	delete [] frontier;

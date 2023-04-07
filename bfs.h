@@ -120,12 +120,14 @@ void scan(int* degrees, int* LS, int n, int* copy){
 }
 
 void scan_down(int* degrees, int* LS, int n, int offset){
+/*
 	if (n < 100){
 		degrees[0] = offset + degrees[0];
 		for (int i = 0; i < n; i++){
 			degrees[i] = degrees[i-1] + degrees[i];
 		}
-	}
+	}*/
+	if (n==0) 
 	int m = n / 2;
 	cilk_spawn scan_down(degrees, LS, m, offset);
 	scan_down(degrees+m, LS+m, n-m, offset+LS[m-1]);

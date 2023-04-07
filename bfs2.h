@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <cilk/cilk.h>
 #include <cilk/cilk_api.h>
-#include "get_time.h"
+//#include "get_time.h"
 
 using namespace std;
 
@@ -17,7 +17,8 @@ using namespace std;
      //int Curr[n], CLS[n];
      //for (int i = 0; i < n; i++) Curr[i] = A[i];
      //for (int i = 0; i < n; i++) CLS[i] = LS[i];
-     if (n < 100)
+   /*
+   if (n < 300)
      {
      	int k = 0;
 	for (int i = 0; i < n; i++)
@@ -29,6 +30,7 @@ using namespace std;
 		}	
 	}
      }
+*/ 
 
      if (n == 1) return A[0];
      int m = n/2;
@@ -164,21 +166,28 @@ void BFS(int n, int m, int* offset, int* E, int s, int* dist)
     while(frontierSize != 0) //continue until there are no more vertexs to add to the frontier
     {
 	cout << "frontier size: " << frontierSize << endl;
+	
+	//while (frontierSize <= n/10)
+	//{
         int** effective_nghs = new int*[frontierSize];
+	//cout << "I still exist here";
         int* ngh_len = new int[frontierSize];
         
         // int C[frontierSize];
 
         // for (int m = 0; m < frontierSize; m++) C[m] = frontier[m];
+        //added for dense backward, this is technically a sparse mode
         for (int i = 0; i < frontierSize; i++) //loop through every vertex of the frontier 
         {
+	//cout << "I still exist here";
             int curr_v = frontier[i]; //this is the curr vertex of the frontier we are visiting 
             // int D[frontierSize];
             // for (int m = 0; m < frontierSize; m++) C[i] = frontier[i];
             int k = offset[curr_v+1] - offset[curr_v]; //this is how many neighbors this curr vertex has. 
             // int* temp_arr = new int[k];
             int* flag = new int[k]; //flag array for which of these neightbors will be added to the effective neightbors list, need to change to delayed seq.
-            
+	    //cilk_for(int i = 0; i < k; i++) flag[i] = 0;
+            //cout << "I still exist here";
             cilk_for(int j = 0; j < k; j++) //for every neighbor of the current vertex 
             //for(int j = 0; j < k; j++)
 	    {
@@ -206,7 +215,7 @@ void BFS(int n, int m, int* offset, int* E, int s, int* dist)
 	    effective_nghs[i] = filter(E+offset[curr_v], flag, k);//getting the effective neighbors for the curr_node
             delete [] flag;
 	    //cout << "I still exist here part 2";
-        }
+        } 				
 	int* tmp = inclusive_scan(ngh_len, frontierSize);
         int newFrontierSize = tmp[frontierSize-1];
 	delete [] tmp;
@@ -221,7 +230,8 @@ void BFS(int n, int m, int* offset, int* E, int s, int* dist)
         
         
         curr_dist++;
-    }
+	}
+    //}
 	delete [] frontier;
 }
 

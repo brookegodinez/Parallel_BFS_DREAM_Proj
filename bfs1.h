@@ -58,14 +58,14 @@ int* exclusive_scan(int* A, int n)
 
  int* pack_flatten(int* arrLen, int** A, int n)
  {
-     int S[n];
+     //int S[n];
      int* B = new int[6];
-     for (int i = 0; i < n; i++) S[i] = arrLen[i];
-     int* offset = exclusive_scan(S, n);
+     //for (int i = 0; i < n; i++) S[i] = arrLen[i];
+     int* offset = exclusive_scan(arrLen, n);
      for (int i = 0; i < n; i++)
      {
          int off = offset[i];
-         for (int j = 0; j < S[i]; j++)
+         for (int j = 0; j < arrLen[i]; j++)
          {
              B[off+j] = A[i][j];
          }
@@ -91,7 +91,7 @@ int* filter(int* ngh, int* flag, int n)
     return B;
 }
 
-void bfs(int n, int m, int* offset, int* E, int s, int* dist)
+void BFS(int n, int m, int* offset, int* E, int s, int* dist)
 {
     // for (int i = 0; i < n; i++) dist[i] = -1;
     int frontierSize = 1;
@@ -107,14 +107,14 @@ void bfs(int n, int m, int* offset, int* E, int s, int* dist)
             int curr_v = frontier[i]; //this is the curr vertex of the frontier we are visiting 
             int k = offset[curr_v+1] - offset[curr_v]; //this is how many neighbors this curr vertex has. 
             // int* temp_arr = new int[k];
+            ///cout << curr_v << " ";
             int* flag = new int[k]; //flag array for which of these neightbors will be added to the effective neightbors list, need to change to delayed seq.
             for(int j = 0; j < k; j++) //for every neighbor of the current vertex 
             {
                 // temp_arr[i] = E[offset[curr_v]+j];
-                if (dist[E[offset[curr_v]+j]] == -1) //the offset of our curr_v could be 3 and then we increment for everyneighbor and check if that vertex has
+                if (dist[E[offset[curr_v]+j]] == -1 && __sync_bool_compare_and_swap(&dist[E[offset[curr_v]+j]], -1, curr_dist)) //the offset of our curr_v could be 3 and then we increment for everyneighbor and check if that vertex has
                 //already been visited i.e. is the dist != -1 
                 {
-                    
                     dist[E[offset[curr_v]+j]] = curr_dist;
                     flag[j] = 1;
                     //add to frontier
